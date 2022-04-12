@@ -1,7 +1,7 @@
 import requests
 import json
 from django.core.management.base import BaseCommand, CommandError
-from voyage.models import Voyage,VoyageAnimationIndex
+from voyage.models import Voyage
 import time
 import os
 
@@ -36,49 +36,47 @@ class Command(BaseCommand):
 					'voyage_ship__ship_name',
 					'voyage_slaves_numbers__imp_total_num_slaves_embarked'
 					],
-				'indexing_model': VoyageAnimationIndex,
-				'fname':'voyage/voyage_animations__index.json',
-				'indexed_model': Voyage,
-				'index_fk_fieldname':'voyage_animation_index'
+				'fname':'voyage/voyage_animations__index.json'
 			}
 		}
 		
-		url='http://127.0.0.1:8000/voyage/dataframes'
+		url='http://127.0.0.1:8000/voyage/'
 		from .app_secrets import headers
+		
+		batch_size=2000
 		
 		for ind in indices:
 			st=time.time()
 			vars=indices[ind]['vars']
-			indexing_model=indices[ind]['indexing_model']
-			indexed_model=indices[ind]['indexed_model']
 			fname=indices[ind]['fname']
-			index_fk_fieldname=indices[ind]['index_fk_fieldname']
-			print('deleting all',ind)
-			indexing_model.objects.all().delete()
+			pk_name=vars[0]
 			
-			print('fetching all',ind)
-			data={'selected_fields':vars}
-			r=requests.post(url=url,headers=headers,data=data)
-			columns=json.loads(r.text)
-			fk=vars[0]
+			page_num=1
+			j={"ordered_keys":[v for v in vars],"entries":{}}
+			data={
+				'selected_fields':vars,
+				'results_per_page':batch_size,
+				'results_page':page_num,
+				'hierarchical':False
+			}
 			
-			number_entries=len(columns[fk])
+			while True:
+				r=requests.post(url=url,headers=headers,data=data)
+				items=json.loads(r.text)
+				for item in items:
+					pk=item[pk_name]
+					j['entries'][pk]=[item[v] for v in vars]
+				total_results_count=int(r.headers['total_results_count'])
+				
+				if page_num*batch_size>total_results_count:
+					break
+				else:
+					page_num+=1
+					data['results_page']=page_num
+					print('fetched %d of %d entries in %d seconds' %(len(j['entries']),total_results_count,int(time.time()-st)))
+			print("fetched %d fields on %d entries" %(len(vars),len(j['entries'])))
 			
-			print("fetched %d fields on %d entries" %(len(vars),number_entries))
-			
-			print("indexing...")
-			
-			try:
-				os.remove(fname)
-			except:
-				pass
 			d=open(fname,'w')
-			
-			j={}
-			for row_idx in range(number_entries):
-				row=[columns[col][row_idx] for col in vars]
-				id=columns[fk][row_idx]
-				j[id]=row
 			d.write(json.dumps(j))
 			d.close()
 			elapsed_seconds=int(time.time()-st)

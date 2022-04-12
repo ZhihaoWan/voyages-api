@@ -40,8 +40,8 @@ class VoyageList(generics.GenericAPIView):
 		print("username:",request.auth.user)
 		t=timer('FETCHING...',[])
 		queryset=Voyage.objects.all()
-		queryset,selected_fields,next_uri,prev_uri,results_count=post_req(queryset,self,request,voyage_options)
-		headers={"next_uri":next_uri,"prev_uri":prev_uri,"total_results_count":results_count}
+		queryset,selected_fields,results_count=post_req(queryset,self,request,voyage_options)
+		headers={"total_results_count":results_count}
 		#read_serializer=VoyageSerializer(queryset,many=True,selected_fields=selected_fields)
 		t=timer('building query',t)
 		read_serializer=VoyageSerializer(queryset,many=True)
@@ -86,7 +86,7 @@ class VoyageAggregations(generics.GenericAPIView):
 		params=request.GET
 		aggregations=params.get('aggregate_fields')
 		queryset=Voyage.objects.all()
-		aggregation,selected_fields,next_uri,prev_uri,results_count=post_req(queryset,self,request,voyage_options,retrieve_all=True)
+		aggregation,selected_fields,results_count=post_req(queryset,self,request,voyage_options,retrieve_all=True)
 		output_dict={}
 		for a in aggregation:
 			for k in a:
@@ -111,8 +111,8 @@ class VoyageDataFrames(generics.GenericAPIView):
 		if 'results_per_page' in params:
 			retrieve_all=False
 		queryset=Voyage.objects.all()
-		queryset,selected_fields,next_uri,prev_uri,results_count=post_req(queryset,self,request,voyage_options,auto_prefetch=False,retrieve_all=retrieve_all)
-		headers={"next_uri":next_uri,"prev_uri":prev_uri,"total_results_count":results_count}
+		queryset,selected_fields,results_count=post_req(queryset,self,request,voyage_options,auto_prefetch=False,retrieve_all=retrieve_all)
+		headers={"total_results_count":results_count}
 		sf=list(selected_fields)
 		t=timer('building query',t)
 		serialized=VoyageSerializer(queryset,many=True,selected_fields=selected_fields)
@@ -149,7 +149,7 @@ class VoyageAnimationCache(generics.GenericAPIView):
 	def post(self,request):
 		params=request.POST
 		queryset=Voyage.objects.all()
-		queryset,selected_fields,next_uri,prev_uri,results_count=post_req(queryset,self,request,voyage_options,auto_prefetch=False,retrieve_all=True)		
+		queryset,selected_fields,results_count=post_req(queryset,self,request,voyage_options,auto_prefetch=False,retrieve_all=True)		
 		d=open('voyage/voyage_animations__index.json','r')
 		j=json.loads(d.read())
 		d.close()
@@ -171,7 +171,7 @@ class VoyagePlaceList(generics.GenericAPIView):
 		#print("username:",request.auth.user)
 		t=timer("FETCHING...",[])
 		queryset=Place.objects.all()
-		queryset,selected_fields,next_uri,prev_uri,results_count=post_req(queryset,self,request,geo_options,retrieve_all=True)
+		queryset,selected_fields,results_count=post_req(queryset,self,request,geo_options,retrieve_all=True)
 		t=timer('building query',t)
 		read_serializer=PlaceSerializer(queryset,many=True)
 		t=timer('sql execution',t)
